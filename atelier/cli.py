@@ -7,6 +7,7 @@
   atelier taste train refs/ -o taste_models/me.json           learn your taste from images
   atelier taste score some.png -m taste_models/me.json        how well an image fits it
   atelier fetch urls.txt refs/likes                           download a list of image URLs
+  atelier pinterest --board <id>                              import your own Pinterest board (official API)
   atelier llm dataset -o llm_data/                            build the fine-tuning dataset
   atelier serve                                               local web studio
   atelier fonts                                               pre-download the font library
@@ -65,10 +66,20 @@ def cmd_remix(a):
     out = Path(a.out or Path(a.spec).parent.parent / "remix")
     taste = _taste(a.taste)
     cands = []
+    import copy as _copy
+
     for i in range(a.n):
         rng = np.random.default_rng(base * 31 + i)
         seed = base if a.vary == "none" else int(rng.integers(1, 2**31))
-        idt = build(dna, seed, family=spec["mark"]["family"] if a.vary in ("palette", "type") else None)
+        d2 = dna
+        if a.vary in ("palette", "all"):
+            # explore around the brief's colour instead of re-rolling the same hue
+            d2 = _copy.deepcopy(dna)
+            h = spec["palette"]["primary"]["oklch"].split()[-1].rstrip(")")
+            d2.hue = (float(h) + rng.uniform(-35, 35)) % 360 if rng.random() < 0.8 else None
+            d2.dark = float(rng.random() < 0.35)
+        idt = build(d2, seed, family=spec["mark"]["family"] if a.vary in ("palette", "type") else None)
+        idt.dna = dna
         if a.vary in ("palette", "type"):
             # keep the symbol, swap the requested layer
             orig = build(dna, base)
@@ -131,11 +142,31 @@ def cmd_fetch(a):
     fetch_urls(Path(a.urls), Path(a.out), delay=a.delay)
 
 
+def cmd_pinterest(a):
+    import os
+
+    from .taste.fetch import pinterest_board, pinterest_boards
+
+    token = a.token or os.environ.get("PINTEREST_TOKEN")
+    if not token:
+        raise SystemExit("Set PINTEREST_TOKEN (developers.pinterest.com -> your app -> access token with boards:read, pins:read).")
+    if not a.board:
+        for b in pinterest_boards(token):
+            print(f"{b['id']}\t{b['name']}")
+        return
+    pinterest_board(token, a.board, Path(a.out), limit=a.limit)
+
+
 def cmd_llm(a):
+    if a.action == "eval":
+        from .llm.evaluate import evaluate
+
+        evaluate(Path(a.data) / "val.jsonl", a.backend, a.limit)
+        return
     from .llm.dataset import build_dataset
 
     build_dataset(Path(a.out), n=a.n, image_index=Path(a.images) if a.images else None, captions=Path(a.captions) if a.captions else None,
-                  paraphrase=a.paraphrase, seed=a.seed)
+                  paraphrase_n=a.paraphrase, seed=a.seed)
 
 
 def cmd_serve(a):
@@ -213,8 +244,18 @@ def main(argv=None):
     p.add_argument("--delay", type=float, default=1.0)
     p.set_defaults(fn=cmd_fetch)
 
+    p = sp.add_parser("pinterest", help="import pins from YOUR boards via the official API (lists boards if no --board)")
+    p.add_argument("--board")
+    p.add_argument("--out", default="refs/likes/pinterest")
+    p.add_argument("--token")
+    p.add_argument("--limit", type=int, default=1000)
+    p.set_defaults(fn=cmd_pinterest)
+
     p = sp.add_parser("llm", help="LLM fine-tuning helpers")
-    p.add_argument("action", choices=["dataset"])
+    p.add_argument("action", choices=["dataset", "eval"])
+    p.add_argument("--data", default="llm_data", help="(eval) folder with val.jsonl")
+    p.add_argument("--backend", default="rules", help="(eval) rules | ollama:<model> | hf:<path> | anthropic:<model>")
+    p.add_argument("--limit", type=int, default=200)
     p.add_argument("-o", "--out", default="llm_data")
     p.add_argument("-n", type=int, default=6000)
     p.add_argument("--images", help="taste_models/<name>.images.jsonl from `atelier taste train`")

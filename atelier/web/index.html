@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atelier Studio</title>
+<style>
+:root{--bg:#f4f3ef;--panel:#ffffff;--ink:#141414;--sub:#6b6b6b;--line:#e3e1db;--accent:#1a1a1a;--accent-ink:#fff;--chip:#efede7}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f0f10;--panel:#18181a;--ink:#f1f1f1;--sub:#9a9a9a;--line:#2a2a2d;--accent:#f1f1f1;--accent-ink:#111;--chip:#232326}}
+:root[data-theme="dark"]{--bg:#0f0f10;--panel:#18181a;--ink:#f1f1f1;--sub:#9a9a9a;--line:#2a2a2d;--accent:#f1f1f1;--accent-ink:#111;--chip:#232326}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+.app{display:grid;grid-template-columns:400px 1fr;min-height:100vh}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:28px;display:flex;flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow:auto}
+h1{font-size:20px;letter-spacing:-.02em;margin:0} h1 small{display:block;font-weight:400;color:var(--sub);font-size:13px}
+label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--sub)}
+textarea,input,select{width:100%;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px}
+textarea{min-height:120px;resize:vertical}
+button{white-space:nowrap;font:inherit;border:0;border-radius:999px;padding:12px 18px;background:var(--accent);color:var(--accent-ink);cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line);font-weight:500}
+button:disabled{opacity:.5;cursor:progress}
+.row{display:flex;gap:10px;align-items:center}
+.axis{display:grid;grid-template-columns:84px 1fr 34px;gap:10px;align-items:center;font-size:13px}
+.axis input{padding:0;accent-color:var(--accent)} .axis span:last-child{color:var(--sub);text-align:right;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:6px} .chip{background:var(--chip);border-radius:999px;padding:4px 10px;font-size:12px;cursor:pointer;user-select:none;border:1px solid transparent}
+.chip.on{border-color:var(--ink)}
+main{padding:32px;min-width:0}
+.empty{height:70vh;display:grid;place-items:center;color:var(--sub);text-align:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+.boards{display:grid;grid-template-columns:1fr 1fr} .boards img{width:100%;aspect-ratio:1;object-fit:contain;display:block;padding:18px}
+.meta{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.meta .t{display:flex;justify-content:space-between;font-size:13px;color:var(--sub)} .meta b{color:var(--ink)}
+.sw{display:flex;gap:4px} .sw i{flex:1;height:22px;border-radius:6px;border:1px solid var(--line)}
+.actions{display:flex;gap:8px;flex-wrap:wrap} .actions a,.actions button{font-size:13px;padding:8px 12px}
+.actions a{color:var(--accent-ink);background:var(--accent);border-radius:999px;text-decoration:none;font-weight:600}
+.status{font-size:13px;color:var(--sub);min-height:20px}
+@media (max-width:860px){.app{grid-template-columns:1fr} aside{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)} main{padding:16px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside>
+  <h1>Atelier<small>Algorithmic brand identity studio</small></h1>
+  <div><label for="brief">Brief</label>
+    <textarea id="brief" placeholder="A minimal streetwear brand called NOCTA — dark, Tokyo-inspired, raw and rebellious"></textarea></div>
+  <div class="row"><input id="name" placeholder="Brand name (optional)"><button class="ghost" id="parse">Read brief</button></div>
+  <div id="dnaBox" hidden>
+    <label>Brand DNA: drag to direct the design</label>
+    <div id="axes" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+    <div class="axis" style="margin-top:6px"><span>dark</span><input type="range" min="0" max="1" step="0.01" id="dark"><span id="darkv"></span></div>
+    <div style="margin-top:12px"><label>Symbol families</label><div class="chips" id="fams" style="margin-top:8px"></div></div>
+    <div class="row" style="margin-top:12px">
+      <select id="sector"></select>
+      <select id="k"><option value="3">3 directions</option><option value="4">4 directions</option><option value="6">6 directions</option></select>
+    </div>
+  </div>
+  <button id="go">Generate identity</button>
+  <div class="status" id="status"></div>
+</aside>
+<main id="results"><div class="empty"><div><p style="font-size:18px;color:var(--ink)">Describe a brand. Get a full identity system.</p>
+<p>Logo, palette, typography, patterns, mockups and a brand book.<br>Everything is computed algorithmically, with no AI image generation.</p></div></div></main>
+</div>
+<script>
+const AXES=["geometric","minimal","warmth","luxury","energy","heritage","playful","edge"];
+const FAMS=["monogram","radial","grid","lines","cut","bars","organic","orbit","isometric","spiral","stack","emblem"];
+const SECTORS=["general","streetwear","fashion","luxury","athletic","saas","ai","fintech","devtools","food","coffee","wellness","beauty","studio","gaming","outdoor","music"];
+let dna=null;
+const $=id=>document.getElementById(id);
+$("sector").innerHTML=SECTORS.map(s=>`<option>${s}</option>`).join("");
+async function post(url,body){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw new Error(j.error||r.statusText);return j}
+function renderDNA(){
+  $("dnaBox").hidden=false;
+  $("axes").innerHTML=AXES.map(a=>`<div class="axis"><span>${a}</span><input type="range" min="0" max="1" step="0.01" value="${dna.axes[a]}" data-a="${a}"><span>${dna.axes[a].toFixed(2)}</span></div>`).join("");
+  $("axes").querySelectorAll("input").forEach(el=>el.oninput=e=>{dna.axes[el.dataset.a]=+el.value;el.nextElementSibling.textContent=(+el.value).toFixed(2)});
+  $("dark").value=dna.dark;$("darkv").textContent=dna.dark.toFixed(2);
+  $("dark").oninput=e=>{dna.dark=+e.target.value;$("darkv").textContent=dna.dark.toFixed(2)};
+  $("sector").value=dna.sector;$("sector").onchange=e=>{dna.sector=e.target.value;dna.kit=null};
+  $("fams").innerHTML=FAMS.map(f=>`<span class="chip ${dna.mark_families.includes(f)?"on":""}" data-f="${f}">${f}</span>`).join("");
+  $("fams").querySelectorAll(".chip").forEach(c=>c.onclick=()=>{const f=c.dataset.f;dna.mark_families=dna.mark_families.includes(f)?dna.mark_families.filter(x=>x!==f):[...dna.mark_families,f];c.classList.toggle("on")});
+}
+async function parse(){const brief=$("brief").value.trim();if(!brief)return;dna=await post("/api/dna",{brief,name:$("name").value});renderDNA()}
+function card(d){
+  return `<div class="card"><div class="boards"><img src="${d.board}" alt="" style="background:${d.palette[0]}"><img src="${d.board2}" alt="" style="background:${d.palette[2]}"></div>
+  <div class="meta"><div class="t"><b>${d.name.replace("-"," ")}</b><span>score ${d.score.toFixed(2)}</span></div>
+  <div class="t"><span>${d.family} · ${d.font}</span></div><div class="sw">${d.palette.map(c=>`<i style="background:${c}"></i>`).join("")}</div>
+  <div class="actions"><a href="${d.book}" target="_blank">Brand book</a>
+  <button class="ghost" data-spec="${d.spec}" data-vary="mark">New symbol</button><button class="ghost" data-spec="${d.spec}" data-vary="palette">New colours</button><button class="ghost" data-spec="${d.spec}" data-vary="type">New type</button></div></div></div>`}
+function show(res,title){
+  $("results").innerHTML=`<h2 style="margin:0 0 16px;letter-spacing:-.02em">${title}</h2><div class="grid">${res.directions.map(card).join("")}</div>`;
+  $("results").querySelectorAll("button[data-spec]").forEach(b=>b.onclick=()=>remix(b.dataset.spec,b.dataset.vary));
+}
+async function generate(){
+  try{$("go").disabled=true;
+    if(!dna){$("status").textContent="Reading brief…";await parse()} if(!dna){$("go").disabled=false;return}
+    $("status").textContent="Exploring candidates, scoring, rendering kits… (~10–20s)";
+    const res=await post("/api/generate",{dna,k:+$("k").value,n:24});
+    show(res,dna.name);$("status").textContent="Done. Open a brand book, or remix a direction.";
+  }catch(e){$("status").textContent="Error: "+e.message}finally{$("go").disabled=false}
+}
+async function remix(spec,vary){
+  $("status").textContent=`Remixing (${vary})…`;
+  try{const res=await post("/api/remix",{spec,vary});show(res,`${dna?dna.name:""} remix: ${vary}`);$("status").textContent="Done."}catch(e){$("status").textContent="Error: "+e.message}
+}
+$("parse").onclick=parse;$("go").onclick=generate;
+$("brief").addEventListener("change",()=>{dna=null});
+</script>
+</body>
+</html>
