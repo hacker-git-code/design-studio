@@ -96,10 +96,14 @@ def monogram(rng, dna, ctx) -> Mark:
                   0.3 + dna.playful * 0.6, 0.2 + dna.energy * dna.edge * 1.5])
     if len(text) == 2 and style == "container" and W > 13:
         style = "solid"
+    if len(text) == 1 and text in "OIL0C" and style == "solid":
+        # a lone O/I/L is a plain shape, not a mark: give it a device
+        style = pick(rng, ["container", "inline", "slit"], [1.2, 1.0 + dna.luxury, 0.6 + dna.energy])
     join = "round" if cap == "round" else "miter"
     tail = 0.6 if "Q" in text else 0.0
     ink_w, ink_h = W + w, 10 + w + tail
     defs = ""
+    shape = None
     if style == "container":
         shape = pick(rng, ["circle", "squircle", "square", "hexagon", "shield"],
                      [1 + dna.playful + (1 - dna.edge), 1 + dna.geometric, 0.6 + dna.edge, 0.4 * dna.geometric, 0.4 * dna.heritage * dna.edge])

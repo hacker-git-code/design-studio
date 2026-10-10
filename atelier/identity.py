@@ -217,7 +217,7 @@ class Identity:
             body = b + run.svg(mw + gap - ink[0], base, c["text"].hex)
             return d, body, mw + gap + ww, max(my + mh, base + bot_ink)
         if kind == "stacked":
-            mh = cap * 3.2
+            mh = max(cap * 3.2, min(cap * 4.6, ww * 0.34 / max(aspect, 0.6)))
             mw = mh * aspect
             gap = cap * 0.95
             W = max(mw, ww)
