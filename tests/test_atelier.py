@@ -93,3 +93,23 @@ def test_llm_dataset(tmp_path):
     for r in rows[:50]:
         dna = BrandDNA.from_dict(json.loads(r["messages"][2]["content"]))
         assert dna.name and set(dna.axes) == set(AXES)
+
+
+def test_lora_masks_everything_but_the_answer():
+    pytest.importorskip("transformers")
+    from atelier.llm.train_lora import encode
+
+    class Tok:  # minimal stand-in: one token per character
+        eos_token = "#"
+
+        def apply_chat_template(self, msgs, add_generation_prompt, tokenize):
+            return "".join(f"<{m['role']}>{m['content']}" for m in msgs) + "<assistant>"
+
+        def __call__(self, text, add_special_tokens=False):
+            return {"input_ids": [ord(c) for c in text]}
+
+    msgs = [{"role": "system", "content": "s"}, {"role": "user", "content": "brief"}, {"role": "assistant", "content": "{}"}]
+    r = encode(Tok(), msgs, 512)
+    answer = [x for x in r["labels"] if x != -100]
+    assert "".join(map(chr, answer)) == "{}#"
+    assert len(r["labels"]) == len(r["input_ids"])

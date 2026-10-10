@@ -31,7 +31,7 @@ def main():
 
     meta = Path(a.adapter) / "atelier.json"
     base = a.base or (json.loads(meta.read_text())["base"] if meta.exists() else "Qwen/Qwen2.5-1.5B-Instruct")
-    model = AutoModelForCausalLM.from_pretrained(base, torch_dtype=torch.float16)
+    model = AutoModelForCausalLM.from_pretrained(base, dtype=torch.float16)
     model = PeftModel.from_pretrained(model, a.adapter).merge_and_unload()
     model.save_pretrained(a.out, safe_serialization=True)
     AutoTokenizer.from_pretrained(a.adapter).save_pretrained(a.out)

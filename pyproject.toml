@@ -18,7 +18,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-llm = ["torch", "transformers>=4.44", "peft>=0.12", "trl>=0.11", "datasets>=2.20", "accelerate>=0.33"]
+llm = ["torch", "transformers>=4.46", "peft>=0.12", "accelerate>=0.33"]
 anthropic = ["anthropic>=1.0"]
 dev = ["pytest>=8"]
 
