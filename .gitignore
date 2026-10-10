@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.cache/
+out/
+refs/
+taste_models/
+llm_data/
+checkpoints/
+*.gguf
+.venv/

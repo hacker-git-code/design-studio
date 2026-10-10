@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "atelier"
+version = "0.1.0"
+description = "Algorithmic brand-identity studio: procedural logos, palettes, typography and mockups, ranked by a taste model trained on your references."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+  "numpy>=1.24",
+  "pillow>=10",
+  "fonttools>=4.40",
+  "uharfbuzz>=0.39",
+  "resvg-py>=0.2",
+]
+
+[project.optional-dependencies]
+llm = ["torch", "transformers>=4.44", "peft>=0.12", "trl>=0.11", "datasets>=2.20", "accelerate>=0.33"]
+clip = ["torch", "open_clip_torch>=2.24"]
+anthropic = ["anthropic>=1.0"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+atelier = "atelier.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["atelier*"]
+
+[tool.setuptools.package-data]
+atelier = ["data/*.json", "web/*"]
