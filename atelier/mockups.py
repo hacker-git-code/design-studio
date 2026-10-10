@@ -127,7 +127,8 @@ def hangtag(idt, rng) -> str:
     d, g = place_symbol(idt, 510, 440, 130, "color" if card == p.paper else "mono", card)
     defs += d
     body += g
-    t, _ = text(idt, idt.dna.name, fit_size(idt, idt.wordmark_text, 220, 34), 510, 600, ink.hex, "display", anchor="middle", case=idt.type.case, tracking=idt.type.tracking)
+    t, _ = text(idt, idt.dna.name, fit_size(idt, idt.wordmark_text, 230, 34, tracking=idt.type.tracking), 510, 600, ink.hex, "display",
+                anchor="middle", case=idt.type.case, tracking=idt.type.tracking)
     body += t
     body += el("line", x1=400, y1=640, x2=620, y2=640, stroke=ink.hex, stroke_opacity="0.3")
     role = "mono" if idt.type.mono else "text"

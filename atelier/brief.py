@@ -66,7 +66,7 @@ SECTOR_WORDS = {
     "ai": "ai artificial-intelligence ml machine-learning agents llm neural copilot",
     "fintech": "fintech finance banking payments bank invest investing wallet crypto money trading",
     "devtools": "developer developers devtools api cli infrastructure cloud database open-source devops",
-    "food": "food restaurant bakery kitchen pizza burger snacks eatery cafe-restaurant grocery juice",
+    "food": "food restaurant bakery kitchen pizza burger snacks plant-based eatery grocery juice candy chocolate icecream ice-cream drinks soda",
     "coffee": "coffee roastery roasters espresso cafe tea",
     "wellness": "wellness yoga meditation spa health mindfulness therapy supplements retreat",
     "beauty": "beauty skincare cosmetics makeup salon haircare candles",
@@ -76,6 +76,7 @@ SECTOR_WORDS = {
     "music": "music label records band festival audio podcast dj",
 }
 SECTOR_INDEX = {w: s for s, ws in SECTOR_WORDS.items() for w in ws.split()}
+SECTOR_INDEX.update({w.rstrip("s"): s for w, s in list(SECTOR_INDEX.items()) if w.endswith("s") and len(w) > 4})
 
 FAMILY_WORDS = {
     "monogram": "monogram initials lettermark letter",

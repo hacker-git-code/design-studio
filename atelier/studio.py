@@ -26,20 +26,38 @@ def board_svg(idt: Identity, on="paper", size=320) -> str:
     return document(size, size, body, defs=d, bg=bg.hex)
 
 
+def brief_fit(idt: Identity) -> dict:
+    """How well a candidate honours the brief: symbol family, light/dark, type personality."""
+    from . import fonts as F
+    from .identity import _font_scores
+    from .marks.registry import family_weights
+
+    d = idt.dna
+    fw = family_weights(d)
+    fam = fw.get(idt.mark.family, 0.0) / max(fw.values())
+    dark = d.dark if idt.palette.dark else 1 - d.dark
+    pool = [s for s in F.LIBRARY if s.category != "mono"]
+    ps = _font_scores(d, pool, temperature=0.12)
+    names = [s.family for s in pool]
+    font = float(ps[names.index(idt.type.display)] / ps.max()) ** 0.35 if idt.type.display in names else 0.5
+    return {"fit_family": fam, "fit_dark": dark, "fit_type": font, "fit": 0.4 * fam + 0.35 * dark + 0.25 * font}
+
+
 def score(idt: Identity, taste=None) -> Identity:
     from .render import to_array
     from .taste.critics import critique
     from .taste.features import features
 
     crit = critique(idt)
-    total = crit["total"]
-    sc = {k: round(v, 3) for k, v in crit.items() if not k.startswith("_")}
+    fit = brief_fit(idt)
+    total = 0.72 * crit["total"] + 0.28 * fit["fit"]
+    sc = {k: round(v, 3) for k, v in crit.items() if not k.startswith("_")} | {k: round(v, 3) for k, v in fit.items()}
     if taste is not None:
         feats = [features(to_array(board_svg(idt, on), 160)) for on in ("paper", "primary")]
         learned = float(np.mean(taste.score(np.array(feats))))
         sc["taste"] = round(learned, 3)
         sc["taste_explain"] = taste.explain(feats[0])
-        total = 0.45 * total + 0.55 * learned
+        total = 0.5 * total + 0.5 * learned
     idt.scores = sc
     idt.score = float(total)
     return idt
