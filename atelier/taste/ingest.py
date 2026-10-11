@@ -19,9 +19,44 @@ from .model import TasteModel
 EXTS = {".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif"}
 
 
+def explode_pdf(pdf: Path, out: Path, min_side: int = 160) -> list[Path]:
+    """Reference PDFs (moodboards, Pinterest exports, brand decks): pull out every
+    embedded image; pages with no usable embedded image are rendered whole."""
+    import pypdfium2 as pdfium
+    import pypdfium2.raw as raw
+
+    out.mkdir(parents=True, exist_ok=True)
+    done = sorted(out.glob("*.png"))
+    if done:
+        return done
+    files = []
+    doc = pdfium.PdfDocument(str(pdf))
+    for i, page in enumerate(doc):
+        found = 0
+        for j, obj in enumerate(page.get_objects(filter=[raw.FPDF_PAGEOBJ_IMAGE], max_depth=3)):
+            try:
+                im = obj.get_bitmap(render=True).to_pil()
+            except Exception:
+                continue
+            if min(im.size) >= min_side:
+                f = out / f"p{i + 1:03d}-img{j + 1:02d}.png"
+                im.convert("RGB").save(f)
+                files.append(f)
+                found += 1
+        if not found:
+            f = out / f"p{i + 1:03d}-page.png"
+            page.render(scale=1.5).to_pil().convert("RGB").save(f)
+            files.append(f)
+    return files
+
+
 def iter_images(root: Path):
     for p in sorted(root.rglob("*")):
-        if p.suffix.lower() in EXTS and p.is_file():
+        if not p.is_file() or ".pdf_cache" in p.parts:
+            continue
+        if p.suffix.lower() == ".pdf":
+            yield from explode_pdf(p, p.parent / ".pdf_cache" / p.stem)
+        elif p.suffix.lower() in EXTS:
             yield p
 
 
@@ -37,8 +72,8 @@ def extract(root: Path, verbose=True):
         X.append(v)
         if st:
             structs.append(st)
-        rel = p.relative_to(root)
-        tags.append(rel.parts[0] if len(rel.parts) > 1 else "")
+        rel = [x for x in p.relative_to(root).parts if x != ".pdf_cache"]
+        tags.append(rel[0] if len(rel) > 1 else "")
         paths.append(str(p))
         if verbose and (i + 1) % 50 == 0:
             print(f"  {i + 1} images...")
